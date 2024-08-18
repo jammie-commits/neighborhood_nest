@@ -10,12 +10,12 @@ from flask_cors import CORS
 import cloudinary.uploader
 import cloudinary
 from functools import wraps
-from flask_mail import Mail, Message
+# from flask_mail import Mail, Message
 
 # Initialize the app and extensions
 app = Flask(__name__)
 api = Api(app)
-mail = Mail(app)
+# mail = Mail(app)
 
 # Configure app
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///neighborhood.db'
@@ -45,8 +45,19 @@ PERMISSIONS = {
     'Resident': {
         'news': ['GET'],
         'events': ['GET'],
+        'residents': ['GET'],
+        
     },
-    # Add other roles and their permissions as needed
+    'Admin': {
+        'residents': ['GET', 'POST', 'PUT', 'DELETE'],
+        'news': ['GET', 'POST', 'PUT', 'DELETE'],
+        'events': ['GET', 'POST', 'PUT', 'DELETE'],
+    },
+    'SuperAdmin': {
+        'neighborhoods': ['GET', 'POST', 'PUT', 'DELETE'],
+        'admins': ['GET', 'POST', 'PUT', 'DELETE'],
+        'Contacts': ['GET'],
+    },
 }
 
 def role_required(required_roles):
