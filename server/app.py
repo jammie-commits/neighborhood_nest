@@ -24,7 +24,7 @@ api = Api(app)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///neighborhood.db'
 app.config['JWT_SECRET_KEY'] = '#24@67$^453' 
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-app.config['JWT_ACCESS_TOKEN_EXPIRES'] = timedelta(minutes=7)
+app.config['JWT_ACCESS_TOKEN_EXPIRES'] = timedelta(minutes=1440)
 
 
 db.init_app(app)
