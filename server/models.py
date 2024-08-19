@@ -19,6 +19,10 @@ class Resident(db.Model, SerializerMixin):
     neighborhood = db.relationship('Neighborhood', back_populates='residents')
     activities = db.relationship('Activity', back_populates='resident', foreign_keys='Activity.resident_id')
 
+    __table_args__ = (
+        db.UniqueConstraint('email', name='unique_email'),
+    )
+
     def __repr__(self):
         return f"<Resident {self.name} (ID: {self.id}, Email: {self.email})>"
 
