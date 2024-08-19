@@ -55,10 +55,9 @@ def home():
 
 PERMISSIONS = {
    'Resident': {
-       'news': ['GET'],
-       'events': ['GET'],
+       'news': ['GET', 'POST', 'PUT', 'DELETE'],
+       'events': ['GET', 'POST', 'PUT', 'DELETE'],
        'residents': ['GET'],
-      
    },
    'Admin': {
        'residents': ['GET', 'POST', 'PUT', 'DELETE'],
@@ -116,19 +115,118 @@ class LoginResource(Resource):
 
 
 class ResidentNewsResource(Resource):
-   @role_required(['Resident'])
-   def get(self, resident_id):
-       resident = Resident.query.get_or_404(resident_id)
-       news = News.query.all()
-       return jsonify([news_item.to_dict() for news_item in news])
+    @role_required(['Resident'])
+    def get(self, resident_id):
+        resident = Resident.query.get_or_404(resident_id)
+        news = News.query.filter_by(neighborhood_id=resident.neighborhood_id).all()
+        return jsonify([news_item.to_dict() for news_item in news])
 
+    @role_required(['Resident'])
+    def post(self, resident_id):
+        resident = Resident.query.get_or_404(resident_id)
+        data = request.json
+        image = request.files.get('image')
 
+        image_url = None
+        if image:
+            upload_result = cloudinary.uploader.upload(image)
+            image_url = upload_result['url']
+
+        new_news = News(
+            title=data['title'],
+            description=data['description'],
+            neighborhood_id=resident.neighborhood_id,
+            date_created=datetime.utcnow(),
+            image_url=image_url
+        )
+        db.session.add(new_news)
+        db.session.commit()
+        return jsonify(new_news.to_dict()), 201
+
+    @role_required(['Resident'])
+    def put(self, resident_id, news_id):
+        resident = Resident.query.get_or_404(resident_id)
+        news = News.query.get_or_404(news_id)
+        if news.neighborhood_id != resident.neighborhood_id:
+            return {"error": "Unauthorized"}, 403
+
+        data = request.json
+        image = request.files.get('image')
+        if image:
+            upload_result = cloudinary.uploader.upload(image)
+            news.image_url = upload_result['url']
+
+        news.title = data.get('title', news.title)
+        news.description = data.get('description', news.description)
+        db.session.commit()
+        return jsonify(news.to_dict())
+
+    @role_required(['Resident'])
+    def delete(self, resident_id, news_id):
+        resident = Resident.query.get_or_404(resident_id)
+        news = News.query.get_or_404(news_id)
+        if news.neighborhood_id != resident.neighborhood_id:
+            return {"error": "Unauthorized"}, 403
+        db.session.delete(news)
+        db.session.commit()
+        return {"message": "News deleted"}
 class ResidentEventResource(Resource):
-   @role_required(['Resident'])
-   def get(self, resident_id):
-       resident = Resident.query.get_or_404(resident_id)
-       events = Event.query.all()
-       return jsonify([event.to_dict() for event in events])
+    @role_required(['Resident'])
+    def get(self, resident_id):
+        resident = Resident.query.get_or_404(resident_id)
+        events = Event.query.filter_by(neighborhood_id=resident.neighborhood_id).all()
+        return jsonify([event.to_dict() for event in events])
+
+    @role_required(['Resident'])
+    def post(self, resident_id):
+        resident = Resident.query.get_or_404(resident_id)
+        data = request.json
+        image = request.files.get('image')
+
+        image_url = None
+        if image:
+            upload_result = cloudinary.uploader.upload(image)
+            image_url = upload_result['url']
+
+        new_event = Event(
+            title=data['title'],
+            description=data['description'],
+            neighborhood_id=resident.neighborhood_id,
+            date_created=datetime.utcnow(),
+            image_url=image_url
+        )
+        db.session.add(new_event)
+        db.session.commit()
+        return jsonify(new_event.to_dict()), 201
+
+    @role_required(['Resident'])
+    def put(self, resident_id, event_id):
+        resident = Resident.query.get_or_404(resident_id)
+        event = Event.query.get_or_404(event_id)
+        if event.neighborhood_id != resident.neighborhood_id:
+            return {"error": "Unauthorized"}, 403
+
+        data = request.json
+        image = request.files.get('image')
+        if image:
+            upload_result = cloudinary.uploader.upload(image)
+            event.image_url = upload_result['url']
+
+        event.title = data.get('title', event.title)
+        event.description = data.get('description', event.description)
+        db.session.commit()
+        return jsonify(event.to_dict())
+
+    @role_required(['Resident'])
+    def delete(self, resident_id, event_id):
+        resident = Resident.query.get_or_404(resident_id)
+        event = Event.query.get_or_404(event_id)
+        if event.neighborhood_id != resident.neighborhood_id:
+            return {"error": "Unauthorized"}, 403
+        db.session.delete(event)
+        db.session.commit()
+        return {"message": "Event deleted"}
+
 
 
 class AdminResidentsResource(Resource):
@@ -455,9 +553,9 @@ class SuperAdminContactMessagesResource(Resource):
 
 # Add resources to the API
 api.add_resource(LoginResource, '/login')
-api.add_resource(ResidentNewsResource, '/residents/<int:resident_id>/news')
-api.add_resource(ResidentNeighborsResource, '/residents/<int:resident_id>/neighbors')
-api.add_resource(ResidentEventResource, '/residents/<int:resident_id>/events')
+api.add_resource(ResidentNewsResource, '/residents/<int:resident_id>/news', '/residents/<int:resident_id>/news/<int:news_id>')
+api.add_resource(ResidentEventResource, '/residents/<int:resident_id>/events', '/residents/<int:resident_id>/events/<int:event_id>')
+
 api.add_resource(AdminNewsResource, '/admins/<int:admin_id>/news')
 api.add_resource(AdminEventResource, '/admins/<int:admin_id>/events')
 api.add_resource(AdminResidentsResource, '/admins/<int:admin_id>/residents')
