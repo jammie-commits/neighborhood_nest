@@ -10,6 +10,7 @@ from flask_cors import CORS
 import cloudinary.uploader
 import cloudinary
 from functools import wraps
+from datetime import timedelta
 # from flask_mail import Mail, Message
 
 
@@ -23,6 +24,7 @@ api = Api(app)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///neighborhood.db'
 app.config['JWT_SECRET_KEY'] = '#24@67$^453' 
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+app.config['JWT_ACCESS_TOKEN_EXPIRES'] = timedelta(minutes=7)
 
 
 db.init_app(app)
