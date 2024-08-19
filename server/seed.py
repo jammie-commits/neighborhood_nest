@@ -12,18 +12,18 @@ def seed_data():
     db.session.commit()
 
     # Create or Update SuperAdmin
-    super_admin = Resident.query.filter_by(email="superadmin@example.com").first()
+    super_admin = Resident.query.filter_by(email="princesssuperadmin@gmail.com").first()
     if super_admin is None:
         super_admin = Resident(
-            name="Super Admin",
-            email="superadmin@example.com",
+            name="princess",
+            email="princesssuperadmin@gmail.com.com",
             password=generate_password_hash("superpassword"),
             role="SuperAdmin",
             neighborhood_id=default_neighborhood.id  # Assign to default neighborhood
         )
         db.session.add(super_admin)
     else:
-        super_admin.name = "Super Admin"
+        super_admin.name = "princess"
         super_admin.password = generate_password_hash("superpassword")
         super_admin.role = "SuperAdmin"
         super_admin.neighborhood_id = default_neighborhood.id
@@ -31,18 +31,18 @@ def seed_data():
     db.session.commit()
 
     # Create or Update Admins
-    admin1 = Resident.query.filter_by(email="adminjohn@example.com").first()
+    admin1 = Resident.query.filter_by(email="admingift@gmail.com").first()
     if admin1 is None:
         admin1 = Resident(
-            name="Admin John",
-            email="adminjohn@example.com",
+            name="Gift Omandi",
+            email="admingift@gmail.com",
             password=generate_password_hash("adminpassword"),
             role="Admin",
             neighborhood_id=neighborhood1.id
         )
         db.session.add(admin1)
     else:
-        admin1.name = "Admin John"
+        admin1.name = "Gift Omandi"
         admin1.password = generate_password_hash("adminpassword")
         admin1.role = "Admin"
         admin1.neighborhood_id = neighborhood1.id
@@ -66,11 +66,11 @@ def seed_data():
     db.session.commit()
 
     # Create or Update Residents
-    resident1 = Resident.query.filter_by(email="bob_unique@example.com").first()
+    resident1 = Resident.query.filter_by(email="arnold@gmail.com.com").first()
     if resident1 is None:
         resident1 = Resident(
-            name="Resident Bob",
-            email="bob_unique@example.com",
+            name="arnold",
+            email="arnold@gmail.com.com",
             password=generate_password_hash("residentpassword"),
             role="Resident",
             neighborhood_id=neighborhood1.id,
@@ -78,7 +78,7 @@ def seed_data():
         )
         db.session.add(resident1)
     else:
-        resident1.name = "Resident Bob"
+        resident1.name = "arnold"
         resident1.password = generate_password_hash("residentpassword")
         resident1.role = "Resident"
         resident1.neighborhood_id = neighborhood1.id
