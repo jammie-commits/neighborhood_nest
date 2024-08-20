@@ -226,6 +226,13 @@ class ResidentEventResource(Resource):
         db.session.delete(event)
         db.session.commit()
         return {"message": "Event deleted"}
+    
+class ResidentNeighborsResource(Resource):
+    @role_required(['Resident'])
+    def get(self, resident_id):
+       resident = Resident.query.get_or_404(resident_id)
+       neighbors = Resident.query.filter_by(neighborhood_id=resident.neighborhood_id).all()
+       return jsonify([neighbor.to_dict() for neighbor in neighbors])
 
 
 
@@ -316,59 +323,17 @@ class AdminNewsResource(Resource):
        db.session.delete(news)
        db.session.commit()
        return {"message": "News deleted"}
-
-class SuperAdminNeighborhoodResource(Resource):
-   @role_required(['SuperAdmin'])
-   def get(self, super_admin_id):
-       neighborhoods = Neighborhood.query.all()
-       return jsonify([neighborhood.to_dict() for neighborhood in neighborhoods])
-
-
-   @role_required(['SuperAdmin'])
-   def post(self, super_admin_id):
-       data = request.get_json()
-       image = request.files.get('image')
-
-
-       image_url = None
-       if image:
-           upload_result = cloudinary.uploader.upload(image)
-           image_url = upload_result['url']
-
-
-       new_neighborhood = Neighborhood(
-           name=data['name'],
-           location=data['location'],
-           image_url=image_url
-       )
-       db.session.add(new_neighborhood)
-       db.session.commit()
-       return jsonify(new_neighborhood.to_dict()), 201
-
-
-   @role_required(['SuperAdmin'])
-   def delete(self, super_admin_id, neighborhood_id):
-       neighborhood = Neighborhood.query.get_or_404(neighborhood_id)
-       db.session.delete(neighborhood)
-       db.session.commit()
-       return {"message": "Neighborhood deleted"}
-class ResidentNeighborsResource(Resource):
-   @role_required(['Resident'])
-   def get(self, resident_id):
-       resident = Resident.query.get_or_404(resident_id)
-       neighbors = Resident.query.filter_by(neighborhood_id=resident.neighborhood_id).all()
-       return jsonify([neighbor.to_dict() for neighbor in neighbors])
-
+   
 class AdminEventResource(Resource):
-   @role_required(['Admin'])
-   def get(self, admin_id):
+    @role_required(['Admin'])
+    def get(self, admin_id):
        admin = Resident.query.get_or_404(admin_id)
        events = Event.query.filter_by(neighborhood_id=admin.neighborhood_id).all()
        return jsonify([event.to_dict() for event in events])
 
 
-   @role_required(['Admin'])
-   def post(self, admin_id):
+    @role_required(['Admin'])
+    def post(self, admin_id):
        admin = Resident.query.get_or_404(admin_id)
        data = request.json
        image = request.files.get('image')
@@ -392,8 +357,8 @@ class AdminEventResource(Resource):
        return jsonify(new_event.to_dict()), 201
 
 
-   @role_required(['Admin'])
-   def put(self, admin_id, event_id):
+    @role_required(['Admin'])
+    def put(self, admin_id, event_id):
        admin = Resident.query.get_or_404(admin_id)
        event = Event.query.get_or_404(event_id)
        if event.neighborhood_id != admin.neighborhood_id:
@@ -413,8 +378,8 @@ class AdminEventResource(Resource):
        return jsonify(event.to_dict())
 
 
-   @role_required(['Admin'])
-   def delete(self, admin_id, event_id):
+    @role_required(['Admin'])
+    def delete(self, admin_id, event_id):
        admin = Resident.query.get_or_404(admin_id)
        event = Event.query.get_or_404(event_id)
        if event.neighborhood_id != admin.neighborhood_id:
@@ -486,16 +451,17 @@ class AdminResidentsResource(Resource):
        return jsonify(resident.to_dict())
 
 
-   @role_required(['Admin'])
-   def delete(self, admin_id, resident_id):
-       admin = Resident.query.get_or_404(admin_id)
-       resident = Resident.query.get_or_404(resident_id)
-       if resident.neighborhood_id != admin.neighborhood_id:
+@role_required(['Admin'])
+def delete(self, admin_id, resident_id):
+    admin = Resident.query.get_or_404(admin_id)
+    resident = Resident.query.get_or_404(resident_id)
+    if resident.neighborhood_id != admin.neighborhood_id:
            return {"error": "Unauthorized"}, 403
-       db.session.delete(resident)
-       db.session.commit()
-       return {"message": "Resident deleted"}
-  
+    db.session.delete(resident)
+    db.session.commit()
+    return {"message": "Resident deleted"}
+
+
 class SuperAdminAdminResource(Resource):
    @role_required(['SuperAdmin'])
    def get(self, super_admin_id):
@@ -531,16 +497,42 @@ class SuperAdminAdminResource(Resource):
        db.session.commit()
        return jsonify(new_admin.to_dict()), 201
 
+class SuperAdminNeighborhoodResource(Resource):
+   @role_required(['SuperAdmin'])
+   def get(self, super_admin_id):
+       neighborhoods = Neighborhood.query.all()
+       return jsonify([neighborhood.to_dict() for neighborhood in neighborhoods])
 
-@role_required(['SuperAdmin'])
-def delete(self, super_admin_id, admin_id):
-       admin = Resident.query.get_or_404(admin_id)
-       if admin.role != 'Admin':
-           return {"error": "Not an Admin"}, 403
-       db.session.delete(admin)
+
+   @role_required(['SuperAdmin'])
+   def post(self, super_admin_id):
+       data = request.get_json()
+       image = request.files.get('image')
+
+
+       image_url = None
+       if image:
+           upload_result = cloudinary.uploader.upload(image)
+           image_url = upload_result['url']
+
+
+       new_neighborhood = Neighborhood(
+           name=data['name'],
+           location=data['location'],
+           image_url=image_url
+       )
+       db.session.add(new_neighborhood)
        db.session.commit()
-       return {"message": "Admin deleted"}
-  
+       return jsonify(new_neighborhood.to_dict()), 201
+
+
+   @role_required(['SuperAdmin'])
+   def delete(self, super_admin_id, neighborhood_id):
+       neighborhood = Neighborhood.query.get_or_404(neighborhood_id)
+       db.session.delete(neighborhood)
+       db.session.commit()
+       return {"message": "Neighborhood deleted"}
+
 class SuperAdminContactMessagesResource(Resource):
    @role_required(['SuperAdmin'])
    def get(self, super_admin_id):
@@ -551,18 +543,21 @@ class SuperAdminContactMessagesResource(Resource):
 
 
 
+
+
+
+
 # Add resources to the API
 api.add_resource(LoginResource, '/login')
-api.add_resource(ResidentNewsResource, '/residents/<int:resident_id>/news', '/residents/<int:resident_id>/news/<int:news_id>')
-api.add_resource(ResidentEventResource, '/residents/<int:resident_id>/events', '/residents/<int:resident_id>/events/<int:event_id>')
-
+api.add_resource(ResidentNewsResource, '/residents/<int:resident_id>/news')
+api.add_resource(ResidentNeighborsResource, '/residents/<int:resident_id>/neighbors')
+api.add_resource(ResidentEventResource, '/residents/<int:resident_id>/events')
 api.add_resource(AdminNewsResource, '/admins/<int:admin_id>/news')
 api.add_resource(AdminEventResource, '/admins/<int:admin_id>/events')
 api.add_resource(AdminResidentsResource, '/admins/<int:admin_id>/residents')
 api.add_resource(SuperAdminAdminResource, '/superadmins/<int:super_admin_id>/admins')
 api.add_resource(SuperAdminNeighborhoodResource, '/superadmins/<int:super_admin_id>/neighborhoods')
 api.add_resource(SuperAdminContactMessagesResource, '/superadmins/<int:super_admin_id>/messages')  # Updated Route
-
 
 if __name__ == '__main__':
    app.run(debug=True)
