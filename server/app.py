@@ -328,6 +328,12 @@ class AdminNewsResource(Resource):
        news.description = data.get('description', news.description)
        db.session.commit()
        return jsonify(news.to_dict()) 
+   
+   @role_required(['Admin'])
+   def get(self, admin_id):
+       admin = Resident.query.get_or_404(admin_id)  # Assuming Admin is a Resident for simplicity
+       news = News.query.filter_by(neighborhood_id=admin.neighborhood_id).all()
+       return jsonify([news.to_dict() for news in news])
 
 
    @role_required(['Admin'])
