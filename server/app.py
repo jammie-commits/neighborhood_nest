@@ -462,76 +462,100 @@ def delete(self, admin_id, resident_id):
     return {"message": "Resident deleted"}
 
 
-class SuperAdminAdminResource(Resource):
-   @role_required(['SuperAdmin'])
-   def get(self, super_admin_id):
-       admins = Resident.query.filter_by(role='Admin').all()
-       return jsonify([admin.to_dict() for admin in admins])
+class SuperAdminNeighborhoodsResource(Resource):
+    @role_required(['SuperAdmin'])
+    def get(self, superadmin_id):
+        neighborhoods = Neighborhood.query.all()
+        return jsonify([neighborhood.to_dict() for neighborhood in neighborhoods])
 
+    @role_required(['SuperAdmin'])
+    def post(self, superadmin_id):
+        data = request.json
+        required_fields = ['name', 'location']
+        for field in required_fields:
+            if field not in data:
+                return jsonify({'message': f'Missing required field: {field}'}), 400
 
-   @role_required(['SuperAdmin'])
-   def post(self, super_admin_id):
-       data = request.get_json()
-       required_fields = ['name', 'email', 'house_number', 'password']
-       for field in required_fields:
-           if field not in data:
-               return jsonify({'message': f'Missing required field: {field}'}), 400
+        new_neighborhood = Neighborhood(
+            name=data['name'],
+            location=data['location']
+        )
+        db.session.add(new_neighborhood)
+        db.session.commit()
+        return jsonify(new_neighborhood.to_dict()), 201
 
+    @role_required(['SuperAdmin'])
+    def put(self, superadmin_id, neighborhood_id):
+        neighborhood = Neighborhood.query.get_or_404(neighborhood_id)
+        data = request.json
+        neighborhood.name = data.get('name', neighborhood.name)
+        neighborhood.location = data.get('location', neighborhood.location)
+        db.session.commit()
+        return jsonify(neighborhood.to_dict())
 
-       profile_image = request.files.get('profile_image')
-       profile_image_url = None
-       if profile_image:
-           upload_result = cloudinary.uploader.upload(profile_image)
-           profile_image_url = upload_result.get('url')
+    @role_required(['SuperAdmin'])
+    def delete(self, superadmin_id, neighborhood_id):
+        neighborhood = Neighborhood.query.get_or_404(neighborhood_id)
+        db.session.delete(neighborhood)
+        db.session.commit()
+        return {"message": "Neighborhood deleted"}
 
+class SuperAdminAdminsResource(Resource):
+    @role_required(['SuperAdmin'])
+    def get(self, superadmin_id):
+        admins = Resident.query.filter_by(role='Admin').all()
+        return jsonify([admin.to_dict() for admin in admins])
 
-       new_admin = Resident(
-           name=data['name'],
-           email=data['email'],
-           house_number=data['house_number'],
-           role='Admin',
-           profile_image_url=profile_image_url
-       )
-       new_admin.set_password(data['password'])
-       db.session.add(new_admin)
-       db.session.commit()
-       return jsonify(new_admin.to_dict()), 201
+    @role_required(['SuperAdmin'])
+    def post(self, superadmin_id):
+        data = request.json
+        required_fields = ['name', 'email', 'password', 'neighborhood_id']
+        for field in required_fields:
+            if field not in data:
+                return jsonify({'message': f'Missing required field: {field}'}), 400
 
-class SuperAdminNeighborhoodResource(Resource):
-   @role_required(['SuperAdmin'])
-   def get(self, super_admin_id):
-       neighborhoods = Neighborhood.query.all()
-       return jsonify([neighborhood.to_dict() for neighborhood in neighborhoods])
+        # Check if the neighborhood exists
+        neighborhood = Neighborhood.query.get(data['neighborhood_id'])
+        if not neighborhood:
+            return jsonify({'message': 'Invalid neighborhood ID'}), 400
 
+        new_admin = Resident(
+            name=data['name'],
+            email=data['email'],
+            role='Admin',
+            neighborhood_id=data['neighborhood_id']
+        )
+        new_admin.set_password(data['password'])
+        db.session.add(new_admin)
+        db.session.commit()
+        return jsonify(new_admin.to_dict()), 201
 
-   @role_required(['SuperAdmin'])
-   def post(self, super_admin_id):
-       data = request.get_json()
-       image = request.files.get('image')
+    @role_required(['SuperAdmin'])
+    def put(self, superadmin_id, admin_id):
+        admin = Resident.query.filter_by(id=admin_id, role='Admin').first_or_404()
+        data = request.json
 
+        # If neighborhood_id is provided, reassign the admin to a new neighborhood
+        if 'neighborhood_id' in data:
+            neighborhood = Neighborhood.query.get(data['neighborhood_id'])
+            if not neighborhood:
+                return jsonify({'message': 'Invalid neighborhood ID'}), 400
+            admin.neighborhood_id = data['neighborhood_id']
 
-       image_url = None
-       if image:
-           upload_result = cloudinary.uploader.upload(image)
-           image_url = upload_result['url']
+        admin.name = data.get('name', admin.name)
+        admin.email = data.get('email', admin.email)
+        if 'password' in data:
+            admin.set_password(data['password'])
 
+        db.session.commit()
+        return jsonify(admin.to_dict())
 
-       new_neighborhood = Neighborhood(
-           name=data['name'],
-           location=data['location'],
-           image_url=image_url
-       )
-       db.session.add(new_neighborhood)
-       db.session.commit()
-       return jsonify(new_neighborhood.to_dict()), 201
-
-
-   @role_required(['SuperAdmin'])
-   def delete(self, super_admin_id, neighborhood_id):
-       neighborhood = Neighborhood.query.get_or_404(neighborhood_id)
-       db.session.delete(neighborhood)
-       db.session.commit()
-       return {"message": "Neighborhood deleted"}
+    @role_required(['SuperAdmin'])
+    def delete(self, superadmin_id, admin_id):
+        admin = Resident.query.filter_by(id=admin_id, role='Admin').first_or_404()
+        db.session.delete(admin)
+        db.session.commit()
+        return {"message": "Admin deleted"}
 
 class SuperAdminContactMessagesResource(Resource):
    @role_required(['SuperAdmin'])
@@ -555,8 +579,8 @@ api.add_resource(ResidentEventResource, '/residents/<int:resident_id>/events')
 api.add_resource(AdminNewsResource, '/admins/<int:admin_id>/news')
 api.add_resource(AdminEventResource, '/admins/<int:admin_id>/events')
 api.add_resource(AdminResidentsResource, '/admins/<int:admin_id>/residents')
-api.add_resource(SuperAdminAdminResource, '/superadmins/<int:super_admin_id>/admins')
-api.add_resource(SuperAdminNeighborhoodResource, '/superadmins/<int:super_admin_id>/neighborhoods')
+api.add_resource(SuperAdminNeighborhoodsResource, '/superadmins/<int:superadmin_id>/neighborhoods', '/superadmins/<int:superadmin_id>/neighborhoods/<int:neighborhood_id>')
+api.add_resource(SuperAdminAdminsResource, '/superadmins/<int:superadmin_id>/admins', '/superadmins/<int:superadmin_id>/admins/<int:admin_id>')
 api.add_resource(SuperAdminContactMessagesResource, '/superadmins/<int:super_admin_id>/messages')  # Updated Route
 
 if __name__ == '__main__':
