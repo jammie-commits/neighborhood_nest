@@ -16,7 +16,8 @@ from datetime import timedelta
 
 # Initialize the app and extensions
 app = Flask(__name__)
-CORS(app)
+CORS(app, resources={r"/*": {"origins": "*"}})
+
 api = Api(app)
 # mail = Mail(app)
 
@@ -114,6 +115,12 @@ class LoginResource(Resource):
        })
        return jsonify(access_token=access_token, role=user.role, id=user.id)
 
+class AllResidentNewsResource(Resource):
+    @role_required(['Resident'])
+    def get(self,):
+        
+        news = News.query.all()
+        return jsonify([news_item.to_dict() for news_item in news])
 class ResidentNewsResource(Resource):
     @role_required(['Resident'])
     def get(self, resident_id):
@@ -411,16 +418,17 @@ class AdminEventResource(Resource):
        return {"message": "Event deleted"}
 
 
-class AdminResidentsResource(Resource):
+class AdminResidentsMoreResource(Resource):
    @role_required(['Admin'])
-   def get(self, admin_id):
+   def get(self, admin_id, resident_id):
+       print('DEDEDEDEDEDED')
        admin = Resident.query.get_or_404(admin_id)
        residents = Resident.query.filter_by(neighborhood_id=admin.neighborhood_id).all()
        return jsonify([resident.to_dict() for resident in residents])
 
 
    @role_required(['Admin'])
-   def post(self, admin_id):
+   def post(self, admin_id, resident_id):
        admin = Resident.query.get_or_404(admin_id)
        print('HERE!')
        data = request.get_json()
@@ -475,17 +483,18 @@ class AdminResidentsResource(Resource):
 
        db.session.commit()
        return jsonify(resident.to_dict())
-
-
-@role_required(['Admin'])
-def delete(self, admin_id, resident_id):
-    admin = Resident.query.get_or_404(admin_id)
-    resident = Resident.query.get_or_404(resident_id)
-    if resident.neighborhood_id != admin.neighborhood_id:
-           return {"error": "Unauthorized"}, 403
-    db.session.delete(resident)
-    db.session.commit()
-    return {"message": "Resident deleted"}
+       
+   @role_required(['Admin'])
+   def delete(self, admin_id, resident_id):
+        
+        print('DEDEDEDEDEDED')
+        admin = Resident.query.get_or_404(admin_id)
+        resident = Resident.query.get_or_404(resident_id)
+        if resident.neighborhood_id != admin.neighborhood_id:
+            return {"error": "Unauthorized"}, 403
+        db.session.delete(resident)
+        db.session.commit()
+        return {"message": "Resident deleted"}
 
 
 class SuperAdminNeighborhoodsResource(Resource):
@@ -508,7 +517,7 @@ class SuperAdminNeighborhoodsResource(Resource):
         )
         db.session.add(new_neighborhood)
         db.session.commit()
-        return jsonify(new_neighborhood.to_dict()), 201
+        return make_response(jsonify(new_neighborhood.to_dict()), 201)
 
     @role_required(['SuperAdmin'])
     def put(self, superadmin_id, neighborhood_id):
@@ -544,6 +553,8 @@ class SuperAdminAdminsResource(Resource):
         neighborhood = Neighborhood.query.get(data['neighborhood_id'])
         if not neighborhood:
             return jsonify({'message': 'Invalid neighborhood ID'}), 400
+        
+        response_data=new_admin
 
         new_admin = Resident(
             name=data['name'],
@@ -554,12 +565,12 @@ class SuperAdminAdminsResource(Resource):
         new_admin.set_password(data['password'])
         db.session.add(new_admin)
         db.session.commit()
-        return jsonify(new_admin.to_dict()), 201
+        return make_response(jsonify(response_data), 201)
 
     @role_required(['SuperAdmin'])
-    def put(self, superadmin_id, admin_id):
-        admin = Resident.query.filter_by(id=admin_id, role='Admin').first_or_404()
+    def put(self, superadmin_id):
         data = request.json
+        admin = Resident.query.filter_by(id=data['admin_id'], role='Admin').first_or_404()
 
         # If neighborhood_id is provided, reassign the admin to a new neighborhood
         if 'neighborhood_id' in data:
@@ -574,7 +585,8 @@ class SuperAdminAdminsResource(Resource):
             admin.set_password(data['password'])
 
         db.session.commit()
-        return jsonify(admin.to_dict())
+        ad_respo = admin.to_dict()
+        return make_response(jsonify(ad_respo))
 
     @role_required(['SuperAdmin'])
     def delete(self, superadmin_id, admin_id):
@@ -588,7 +600,7 @@ class SuperAdminContactMessagesResource(Resource):
    def get(self, super_admin_id):
        super_admin = Resident.query.get_or_404(super_admin_id)
        messages = Contact.query.all()
-       return jsonify([message.to_dict() for message in messages])
+       return make_response(jsonify([message.to_dict() for message in messages]))
 
 
 
@@ -599,13 +611,17 @@ class SuperAdminContactMessagesResource(Resource):
 
 # Add resources to the API
 api.add_resource(LoginResource, '/login')
+api.add_resource(AllResidentNewsResource, '/residents/news')
 api.add_resource(ResidentNewsResource, '/residents/<int:resident_id>/news')
 api.add_resource(ResidentNeighborsResource, '/residents/<int:resident_id>/neighbors')
 api.add_resource(ResidentEventResource, '/residents/<int:resident_id>/events')
 api.add_resource(AdminNewsResource, '/admins/<int:admin_id>/news')
 api.add_resource(AdminEventResource, '/admins/<int:admin_id>/events')
 api.add_resource(AdminResidentsResource, '/admins/<int:admin_id>/residents')
-api.add_resource(SuperAdminNeighborhoodsResource, '/superadmins/<int:superadmin_id>/neighborhoods', '/superadmins/<int:superadmin_id>/neighborhoods/<int:neighborhood_id>')
+api.add_resource(AdminResidentsMoreResource, '/admins/<int:admin_id>/residents/<int:resident_id>')
+
+api.add_resource(SuperAdminNeighborhoodsResource, '/superadmins/<int:superadmin_id>/neighborhoods')
+
 api.add_resource(SuperAdminAdminsResource, '/superadmins/<int:superadmin_id>/admins', '/superadmins/<int:superadmin_id>/admins/<int:admin_id>')
 api.add_resource(SuperAdminContactMessagesResource, '/superadmins/<int:super_admin_id>/messages')  # Updated Route
 
