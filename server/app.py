@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify,make_response
 from flask_restful import Api, Resource
 from flask_sqlalchemy import SQLAlchemy
 from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt_identity
@@ -16,6 +16,7 @@ from datetime import timedelta
 
 # Initialize the app and extensions
 app = Flask(__name__)
+CORS(app)
 api = Api(app)
 # mail = Mail(app)
 
@@ -32,7 +33,7 @@ jwt = JWTManager(app)
 migrate = Migrate(app, db)
 
 
-CORS(app)  # Allow requests from all origins
+ # Allow requests from all origins
 
 
 cloudinary.config(
@@ -90,7 +91,7 @@ def role_required(required_roles):
 
 
 class LoginResource(Resource):
-    def post(self):
+   def post(self):
        data = request.json
        email = data.get('email')
        password = data.get('password')
@@ -111,8 +112,7 @@ class LoginResource(Resource):
            'id': user.id,
            'role': user.role
        })
-       return jsonify(access_token=access_token, role=user.role, id=user.id) # Updated: Include user ID in response
-
+       return jsonify(access_token=access_token, role=user.role, id=user.id)
 
 class ResidentNewsResource(Resource):
     @role_required(['Resident'])
@@ -422,6 +422,7 @@ class AdminResidentsResource(Resource):
    @role_required(['Admin'])
    def post(self, admin_id):
        admin = Resident.query.get_or_404(admin_id)
+       print('HERE!')
        data = request.get_json()
        required_fields = ['name', 'email', 'house_number', 'password']
        for field in required_fields:
@@ -446,7 +447,10 @@ class AdminResidentsResource(Resource):
        new_resident.set_password(data['password'])
        db.session.add(new_resident)
        db.session.commit()
-       return jsonify(new_resident.to_dict()), 201
+       print(new_resident)
+       data = new_resident.to_dict()
+       response_data = new_resident.to_dict()
+       return make_response(jsonify(response_data), 201)
 
 
    @role_required(['Admin'])
