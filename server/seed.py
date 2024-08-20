@@ -16,10 +16,10 @@ def seed_data():
     if super_admin is None:
         super_admin = Resident(
             name="princess",
-            email="princesssuperadmin@gmail.com.com",
+            email="princesssuperadmin@gmail.com",
             password=generate_password_hash("superpassword"),
             role="SuperAdmin",
-            neighborhood_id=default_neighborhood.id  # Assign to default neighborhood
+            neighborhood_id=default_neighborhood.id
         )
         db.session.add(super_admin)
     else:
@@ -66,11 +66,11 @@ def seed_data():
     db.session.commit()
 
     # Create or Update Residents
-    resident1 = Resident.query.filter_by(email="arnold@gmail.com.com").first()
+    resident1 = Resident.query.filter_by(email="arnold@gmail.com").first()
     if resident1 is None:
         resident1 = Resident(
-            name="arnold",
-            email="arnold@gmail.com.com",
+            name="Arnold",
+            email="arnold@gmail.com",
             password=generate_password_hash("residentpassword"),
             role="Resident",
             neighborhood_id=neighborhood1.id,
@@ -78,7 +78,7 @@ def seed_data():
         )
         db.session.add(resident1)
     else:
-        resident1.name = "arnold"
+        resident1.name = "Arnold"
         resident1.password = generate_password_hash("residentpassword")
         resident1.role = "Resident"
         resident1.neighborhood_id = neighborhood1.id
@@ -87,7 +87,7 @@ def seed_data():
     resident2 = Resident.query.filter_by(email="alice_unique@example.com").first()
     if resident2 is None:
         resident2 = Resident(
-            name="Resident Alice",
+            name="Alice",
             email="alice_unique@example.com",
             password=generate_password_hash("residentpassword"),
             role="Resident",
@@ -96,7 +96,7 @@ def seed_data():
         )
         db.session.add(resident2)
     else:
-        resident2.name = "Resident Alice"
+        resident2.name = "Alice"
         resident2.password = generate_password_hash("residentpassword")
         resident2.role = "Resident"
         resident2.neighborhood_id = neighborhood2.id
@@ -104,8 +104,59 @@ def seed_data():
 
     db.session.commit()
 
-    # The rest of your seed data logic...
-    print("Database seeded successfully!")
+    # Create News
+    news1 = News(
+        title="Neighborhood Cleanup Day",
+        description="Join us for a community cleanup event this Saturday.",
+        date_created=datetime.now(timezone.utc),
+        image_url="https://example.com/cleanup.jpg"
+    )
+
+    news2 = News(
+        title="New Park Opening",
+        description="A new park is opening in Sunnyvale next week!",
+        date_created=datetime.now(timezone.utc),
+        image_url="https://example.com/park.jpg"
+    )
+
+    db.session.add_all([news1, news2])
+    db.session.commit()
+
+    # Create Events
+    event1 = Event(
+        name="Summer Festival",
+        description="A fun summer festival with music, food, and games.",
+        date=datetime.now(timezone.utc),
+        image_url="https://example.com/festival.jpg"
+    )
+
+    event2 = Event(
+        name="Winter Gala",
+        description="Celebrate the winter season with a grand gala event.",
+        date=datetime.now(timezone.utc),
+        image_url="https://example.com/gala.jpg"
+    )
+
+    db.session.add_all([event1, event2])
+    db.session.commit()
+
+    # Optional: Add some contact messages
+    contact1 = Contact(
+        name="John Doe",
+        subject="Inquiry about the cleanup event",
+        message="Looking forward to the neighborhood cleanup event!"
+    )
+
+    contact2 = Contact(
+        name="Jane Smith",
+        subject="Feedback on the new park",
+        message="Excited about the new park opening!"
+    )
+
+    db.session.add_all([contact1, contact2])
+    db.session.commit()
+
+    print("Database seeded successfully with residents, news, events, and contacts!")
 
 if __name__ == "__main__":
     from app import app  # Import the app to use its context

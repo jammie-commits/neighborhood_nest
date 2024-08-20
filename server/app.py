@@ -312,6 +312,22 @@ class AdminNewsResource(Resource):
        db.session.add(new_news)
        db.session.commit()
        return jsonify(new_news.to_dict()), 201
+   
+   @role_required(['Admin'])
+   def PUT(self, admin_id, news_id):
+       admin = Resident.query.get_or_404(admin_id)  # Assuming Admin is a Resident for simplicity
+       news = News.query.get_or_404(news_id)
+       if news.neighborhood_id != admin.neighborhood_id:
+           return {"error": "Unauthorized"}, 403
+       data = request.json
+       image = request.files.get('image')
+       if image:
+           upload_result = cloudinary.uploader.upload(image)
+           news.image_url = upload_result['url']
+       news.title = data.get('title', news.title)
+       news.description = data.get('description', news.description)
+       db.session.commit()
+       return jsonify(news.to_dict()) 
 
 
    @role_required(['Admin'])
