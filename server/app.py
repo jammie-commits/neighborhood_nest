@@ -4,7 +4,7 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt_identity
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime, timedelta
-from models import db, Resident, Neighborhood, News, Event, Notifications  # Ensure Notifications is imported
+from models import db, Resident, Neighborhood, News, Event, Notifications, Contact  # Ensure Notifications is imported
 from flask_migrate import Migrate
 from flask_cors import CORS
 import cloudinary.uploader
@@ -44,18 +44,19 @@ PERMISSIONS = {
         'events': ['GET', 'POST', 'PUT', 'DELETE'],
         'residents': ['GET'],
         'notifications': ['GET', 'DELETE'],
+        'contacts': ['POST'],
     },
     'Admin': {
         'residents': ['GET', 'POST', 'PUT', 'DELETE'],
         'news': ['GET', 'POST', 'PUT', 'DELETE'],
         'events': ['GET', 'POST', 'PUT', 'DELETE'],
-        'contacts': ['GET'],
+        'contacts': ['POST'],
         'notifications': ['GET', 'DELETE'],
     },
     'SuperAdmin': {
         'neighborhoods': ['GET', 'POST', 'PUT', 'DELETE'],
         'admins': ['GET', 'POST', 'PUT', 'DELETE'],
-        'contacts': ['GET'],
+        'contacts': ['GET', 'POST', 'PUT', 'DELETE'],
         'notifications': ['GET', 'DELETE'],
     },
 }
@@ -334,6 +335,52 @@ class NotificationDeleteResource(Resource):
         db.session.delete(notification)
         db.session.commit()
         return make_response({"message": "Notification deleted"}, 200)
+    
+class ContactGetResource(Resource):
+    @jwt_required()
+    @role_required(['SuperAdmin'])
+    def get(self, contact_id=None):
+        if contact_id:
+            contact = Contact.query.get_or_404(contact_id)
+            return make_response(contact.to_dict(), 200)
+        contacts = Contact.query.all()
+        return make_response([contact.to_dict() for contact in contacts], 200)
+
+class ContactPostResource(Resource):
+    @jwt_required()
+    @role_required(['Admin', 'Resident'])
+    def post(self):
+        data = request.json
+        new_contact = Contact(
+            name=data['name'],
+            subject=data['subject'],
+            message=data['message']
+        )
+        db.session.add(new_contact)
+        db.session.commit()
+        return make_response(new_contact.to_dict(), 201)
+
+class ContactPutResource(Resource):
+    @jwt_required()
+    @role_required(['SuperAdmin'])
+    def put(self, contact_id):
+        contact = Contact.query.get_or_404(contact_id)
+        data = request.json
+        contact.name = data.get('name', contact.name)
+        contact.subject = data.get('subject', contact.subject)
+        contact.message = data.get('message', contact.message)
+        db.session.commit()
+        return make_response(contact.to_dict(), 200)
+
+class ContactDeleteResource(Resource):
+    @jwt_required()
+    @role_required(['SuperAdmin'])
+    def delete(self, contact_id):
+        contact = Contact.query.get_or_404(contact_id)
+        db.session.delete(contact)
+        db.session.commit()
+        return make_response({"message": "Contact deleted"}, 200)
+
 
 # Register the resources with the API
 api.add_resource(NeighborhoodGetResource, '/neighborhoods', '/neighborhoods/<int:neighborhood_id>')
@@ -358,6 +405,14 @@ api.add_resource(EventDeleteResource, '/events/<int:event_id>')
 
 api.add_resource(NotificationGetResource, '/notifications')
 api.add_resource(NotificationDeleteResource, '/notifications/<int:notification_id>')  # Added for deletion
+
+api.add_resource(ContactGetResource, '/contacts', '/contacts/<int:contact_id>')
+api.add_resource(ContactPostResource, '/contacts')
+api.add_resource(ContactPutResource, '/contacts/<int:contact_id>')
+api.add_resource(ContactDeleteResource, '/contacts/<int:contact_id>')
+
+
+
 
 # Run the app
 if __name__ == '__main__':
