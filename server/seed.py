@@ -104,37 +104,47 @@ def seed_data():
 
     db.session.commit()
 
-    # Create News
+    # Get existing residents for news
+    resident1 = Resident.query.filter_by(email="arnold@gmail.com").first()
+    resident2 = Resident.query.filter_by(email="alice_unique@example.com").first()
+
+    # Create News with neighborhood_id
     news1 = News(
         title="Neighborhood Cleanup Day",
         description="Join us for a community cleanup event this Saturday.",
         date_created=datetime.now(timezone.utc),
-        image_url="https://example.com/cleanup.jpg"
+        image_url="https://example.com/cleanup.jpg",
+        resident_id=resident1.id,
+        neighborhood_id=resident1.neighborhood_id  # Assigning neighborhood_id based on resident's neighborhood
     )
 
     news2 = News(
         title="New Park Opening",
         description="A new park is opening in Sunnyvale next week!",
         date_created=datetime.now(timezone.utc),
-        image_url="https://example.com/park.jpg"
+        image_url="https://example.com/park.jpg",
+        resident_id=resident2.id,
+        neighborhood_id=resident2.neighborhood_id  # Assigning neighborhood_id based on resident's neighborhood
     )
 
     db.session.add_all([news1, news2])
     db.session.commit()
 
-    # Create Events
+    # Create Events with neighborhood_id
     event1 = Event(
         name="Summer Festival",
         description="A fun summer festival with music, food, and games.",
         date=datetime.now(timezone.utc),
-        image_url="https://example.com/festival.jpg"
+        image_url="https://example.com/festival.jpg",
+        neighborhood_id=neighborhood1.id  # Assigning neighborhood_id to the event
     )
 
     event2 = Event(
         name="Winter Gala",
         description="Celebrate the winter season with a grand gala event.",
         date=datetime.now(timezone.utc),
-        image_url="https://example.com/gala.jpg"
+        image_url="https://example.com/gala.jpg",
+        neighborhood_id=neighborhood2.id  # Assigning neighborhood_id to the event
     )
 
     db.session.add_all([event1, event2])

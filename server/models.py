@@ -93,6 +93,12 @@ class News(db.Model, SerializerMixin):
     description = db.Column(db.Text, nullable=False)
     date_created = db.Column(db.DateTime, default=datetime.utcnow)
     image_url = db.Column(db.String(255))  # URL for news image
+    resident_id = db.Column(db.Integer, db.ForeignKey('residents.id'), nullable=False)  # ForeignKey to Resident model
+    neighborhood_id = db.Column(db.Integer, db.ForeignKey('neighborhoods.id'), nullable=False)  # ForeignKey to Neighborhood model
+    
+    # Relationships
+    resident = db.relationship('Resident', backref=db.backref('news', lazy=True))
+    neighborhood = db.relationship('Neighborhood', backref=db.backref('news', lazy=True))
 
     def __repr__(self):
         return f"<News {self.title} (ID: {self.id}, Created: {self.date_created})>"
@@ -102,7 +108,11 @@ class News(db.Model, SerializerMixin):
             'id': self.id,
             'title': self.title,
             'description': self.description,
-            'image_url': self.image_url
+            'image_url': self.image_url,
+            'resident_id': self.resident_id,
+            'resident_name': self.resident.name,  # Assuming you want the resident's name in the dict
+            'neighborhood_id': self.neighborhood_id,
+            'neighborhood_name': self.neighborhood.name  # Assuming you want the neighborhood's name in the dict
         }
 
 class Event(db.Model, SerializerMixin):
@@ -112,6 +122,10 @@ class Event(db.Model, SerializerMixin):
     description = db.Column(db.Text, nullable=False)
     date = db.Column(db.DateTime, nullable=False)
     image_url = db.Column(db.String(255))  # URL for event image
+    neighborhood_id = db.Column(db.Integer, db.ForeignKey('neighborhoods.id'), nullable=False)  # ForeignKey to Neighborhood model
+    
+    # Relationships
+    neighborhood = db.relationship('Neighborhood', backref=db.backref('events', lazy=True))
 
     def __repr__(self):
         return f"<Event {self.name} (ID: {self.id}, Date: {self.date})>"
@@ -122,8 +136,11 @@ class Event(db.Model, SerializerMixin):
             'name': self.name,
             'description': self.description,
             'date': self.date,
-            'image_url': self.image_url
+            'image_url': self.image_url,
+            'neighborhood_id': self.neighborhood_id,
+            'neighborhood_name': self.neighborhood.name  # Assuming you want the neighborhood's name in the dict
         }
+
 
 class Contact(db.Model):
     id = db.Column(db.Integer, primary_key=True)

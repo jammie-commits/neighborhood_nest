@@ -124,8 +124,8 @@ class AllResidentNewsResource(Resource):
 class ResidentNewsResource(Resource):
     @role_required(['Resident'])
     def get(self, resident_id):
-        resident = Resident.query.get_or_404(resident_id)
-        news = News.query.filter_by(neighborhood_id=resident.neighborhood_id).all()
+        
+        news = News.query.filter_by(resident=resident_id).all()
         return jsonify([news_item.to_dict() for news_item in news])
 
     @role_required(['Resident'])
@@ -142,13 +142,13 @@ class ResidentNewsResource(Resource):
         new_news = News(
             title=data['title'],
             description=data['description'],
-            neighborhood_id=resident.neighborhood_id,
+            
             date_created=datetime.utcnow(),
             image_url=image_url
         )
         db.session.add(new_news)
         db.session.commit()
-        return jsonify(new_news.to_dict()), 201
+        return make_response(jsonify(new_news.to_dict()), 201)
 
     @role_required(['Resident'])
     def put(self, resident_id, news_id):
@@ -274,13 +274,13 @@ class AdminResidentsResource(Resource):
            name=data['name'],
            email=data['email'],
            house_number=data['house_number'],
-           neighborhood_id=admin.neighborhood_id,
-           profile_image_url=profile_image_url
+           password=data['password']
        )
        new_resident.set_password(data['password'])
        db.session.add(new_resident)
        db.session.commit()
-       return jsonify(new_resident.to_dict()), 201
+       newres =new_resident.to_dict()
+       return make_response(jsonify(newres), 201)
 
 
 class AdminResidentResource(Resource):
@@ -620,7 +620,7 @@ api.add_resource(AdminEventResource, '/admins/<int:admin_id>/events')
 api.add_resource(AdminResidentsResource, '/admins/<int:admin_id>/residents')
 api.add_resource(AdminResidentsMoreResource, '/admins/<int:admin_id>/residents/<int:resident_id>')
 
-api.add_resource(SuperAdminNeighborhoodsResource, '/superadmins/<int:superadmin_id>/neighborhoods')
+api.add_resource(SuperAdminNeighborhoodsResource, '/superadmins/neighborhoods')
 
 api.add_resource(SuperAdminAdminsResource, '/superadmins/<int:superadmin_id>/admins', '/superadmins/<int:superadmin_id>/admins/<int:admin_id>')
 api.add_resource(SuperAdminContactMessagesResource, '/superadmins/<int:super_admin_id>/messages')  # Updated Route
