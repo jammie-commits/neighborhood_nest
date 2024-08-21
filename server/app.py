@@ -336,6 +336,7 @@ class NotificationDeleteResource(Resource):
         db.session.commit()
         return make_response({"message": "Notification deleted"}, 200)
     
+# Contact Resource
 class ContactGetResource(Resource):
     @jwt_required()
     @role_required(['SuperAdmin'])
@@ -362,9 +363,12 @@ class ContactPostResource(Resource):
 
 class ContactPutResource(Resource):
     @jwt_required()
-    @role_required(['SuperAdmin'])
+    @role_required(['SuperAdmin', 'Resident'])  # Updated to allow residents to update their own contacts
     def put(self, contact_id):
         contact = Contact.query.get_or_404(contact_id)
+        user_id = get_jwt_identity()['id']
+        if get_jwt_identity()['role'] != 'SuperAdmin' and contact.resident_id != user_id:
+            return make_response({"error": "Unauthorized", "message": "You can only update your own contacts"}, 403)
         data = request.json
         contact.name = data.get('name', contact.name)
         contact.subject = data.get('subject', contact.subject)
