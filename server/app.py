@@ -87,7 +87,7 @@ class LoginResource(Resource):
             return make_response({"error": "Email and password required"}, 400)
 
         user = Resident.query.filter_by(email=email).first()
-        if not user or not check_password_hash(user.password, password):
+        if not user or not check_password_hash(user.password, str(password)):
             return make_response({"error": "Invalid credentials"}, 401)
 
         access_token = create_access_token(identity={
@@ -175,7 +175,7 @@ class ResidentPutResource(Resource):
         resident.name = data.get('name', resident.name)
         resident.email = data.get('email', resident.email)
         if 'password' in data:
-            resident.password = generate_password_hash(data['password'])
+            resident.password = generate_password_hash(str(data['password']))
         resident.house_number = data.get('house_number', resident.house_number)
         db.session.commit()
         return make_response(resident.to_dict(), 200)
