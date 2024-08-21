@@ -153,10 +153,12 @@ class ResidentPostResource(Resource):
     @role_required(['Admin'])
     def post(self, neighborhood_id):
         data = request.json
+        p = generate_password_hash(str(data['password']))
+        print(p)
         new_resident = Resident(
             name=data['name'],
             email=data['email'],
-            password=generate_password_hash(data['password']),
+            password=generate_password_hash(str(data['password'])),
             role='Resident',
             neighborhood_id=neighborhood_id,
             house_number=data.get('house_number', '')
@@ -395,7 +397,7 @@ api.add_resource(NeighborhoodPutResource, '/neighborhoods/<int:neighborhood_id>'
 api.add_resource(NeighborhoodDeleteResource, '/neighborhoods/<int:neighborhood_id>')
 
 api.add_resource(ResidentGetResource, '/neighborhoods/<int:neighborhood_id>/residents')
-api.add_resource(ResidentPostResource, '/neighborhoods/<int:neighborhood_id>/residents')
+api.add_resource(ResidentPostResource, '/neighborhoods/<int:neighborhood_id>/residentspost')
 api.add_resource(ResidentPutResource, '/residents/<int:resident_id>')
 api.add_resource(ResidentDeleteResource, '/residents/<int:resident_id>')
 
