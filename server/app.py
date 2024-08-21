@@ -4,7 +4,7 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt_identity
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime, timedelta
-from models import db, Resident, Neighborhood, News, Event, Contact, Admin
+from models import db, Resident, Neighborhood, News, Event, Notifications  # Ensure Notifications is imported
 from flask_migrate import Migrate
 from flask_cors import CORS
 import cloudinary.uploader
@@ -35,9 +35,7 @@ cloudinary.config(
 # Home route
 @app.route('/')
 def home():
-    response = make_response({"message": "Welcome to the Neighborhood API"})
-    response.mimetype = 'application/json'
-    return response
+    return make_response({"message": "Welcome to the Neighborhood API"}, 200)
 
 # ------------------- Role-Based Permissions -------------------
 PERMISSIONS = {
@@ -45,17 +43,20 @@ PERMISSIONS = {
         'news': ['GET', 'POST', 'PUT', 'DELETE'],
         'events': ['GET', 'POST', 'PUT', 'DELETE'],
         'residents': ['GET'],
+        'notifications': ['GET', 'DELETE'],
     },
     'Admin': {
         'residents': ['GET', 'POST', 'PUT', 'DELETE'],
         'news': ['GET', 'POST', 'PUT', 'DELETE'],
         'events': ['GET', 'POST', 'PUT', 'DELETE'],
         'contacts': ['GET'],
+        'notifications': ['GET', 'DELETE'],
     },
     'SuperAdmin': {
         'neighborhoods': ['GET', 'POST', 'PUT', 'DELETE'],
         'admins': ['GET', 'POST', 'PUT', 'DELETE'],
         'contacts': ['GET'],
+        'notifications': ['GET', 'DELETE'],
     },
 }
 
@@ -67,16 +68,14 @@ def role_required(required_roles):
             user_identity = get_jwt_identity()
             user_role = user_identity.get('role')
             if user_role not in required_roles:
-                response = make_response({"error": "Unauthorized: Insufficient role"})
-                response.status_code = 403
-                response.mimetype = 'application/json'
-                return response
+                return make_response({"error": "Unauthorized: Insufficient role"}, 403)
             return fn(*args, **kwargs)
         return wrapper
     return decorator
 
 # ------------------- Resource Classes -------------------
 
+# Login Resource
 class LoginResource(Resource):
     def post(self):
         data = request.json
@@ -84,82 +83,72 @@ class LoginResource(Resource):
         password = data.get('password')
 
         if not email or not password:
-            response = make_response({"error": "Email and password required"})
-            response.status_code = 400
-            response.mimetype = 'application/json'
-            return response
+            return make_response({"error": "Email and password required"}, 400)
 
-        user = Resident.query.filter_by(email=email).first() or Admin.query.filter_by(email=email).first()
-
+        user = Resident.query.filter_by(email=email).first()
         if not user or not check_password_hash(user.password, password):
-            response = make_response({"error": "Invalid credentials"})
-            response.status_code = 401
-            response.mimetype = 'application/json'
-            return response
+            return make_response({"error": "Invalid credentials"}, 401)
 
         access_token = create_access_token(identity={
             'id': user.id,
             'role': user.role
         })
-        response = make_response({"access_token": access_token, "role": user.role, "id": user.id})
-        response.mimetype = 'application/json'
-        return response
+        return make_response({
+            'access_token': access_token,
+            'role': user.role,
+            'id': user.id
+        }, 200)
 
-class NeighborhoodResource(Resource):
-    @role_required(['SuperAdmin'])
+# Neighborhood Resource
+class NeighborhoodGetResource(Resource):
+    @role_required(['SuperAdmin', 'Admin'])
     def get(self, neighborhood_id=None):
         if neighborhood_id:
             neighborhood = Neighborhood.query.get_or_404(neighborhood_id)
-            response = make_response(neighborhood.to_dict())
-        else:
-            neighborhoods = Neighborhood.query.all()
-            response = make_response([neighborhood.to_dict() for neighborhood in neighborhoods])
-        response.mimetype = 'application/json'
-        return response
+            return make_response(neighborhood.to_dict(), 200)
+        neighborhoods = Neighborhood.query.all()
+        return make_response([neighborhood.to_dict() for neighborhood in neighborhoods], 200)
 
+class NeighborhoodPostResource(Resource):
     @role_required(['SuperAdmin'])
     def post(self):
         data = request.json
         new_neighborhood = Neighborhood(
             name=data['name'],
-            description=data.get('description', ''),
-            date_created=datetime.utcnow()
+            location=data.get('location', 'N/A'),
+            image_url=data.get('image_url', '')
         )
         db.session.add(new_neighborhood)
         db.session.commit()
-        response = make_response(new_neighborhood.to_dict())
-        response.status_code = 201
-        response.mimetype = 'application/json'
-        return response
+        return make_response(new_neighborhood.to_dict(), 201)
 
+class NeighborhoodPutResource(Resource):
     @role_required(['SuperAdmin'])
     def put(self, neighborhood_id):
         neighborhood = Neighborhood.query.get_or_404(neighborhood_id)
         data = request.json
         neighborhood.name = data.get('name', neighborhood.name)
-        neighborhood.description = data.get('description', neighborhood.description)
+        neighborhood.location = data.get('location', neighborhood.location)
+        neighborhood.image_url = data.get('image_url', neighborhood.image_url)
         db.session.commit()
-        response = make_response(neighborhood.to_dict())
-        response.mimetype = 'application/json'
-        return response
+        return make_response(neighborhood.to_dict(), 200)
 
+class NeighborhoodDeleteResource(Resource):
     @role_required(['SuperAdmin'])
     def delete(self, neighborhood_id):
         neighborhood = Neighborhood.query.get_or_404(neighborhood_id)
         db.session.delete(neighborhood)
         db.session.commit()
-        response = make_response({"message": "Neighborhood deleted"})
-        response.mimetype = 'application/json'
-        return response
+        return make_response({"message": "Neighborhood deleted"}, 200)
 
-class ResidentResource(Resource):
+# Resident Resource
+class ResidentGetResource(Resource):
     @role_required(['Admin', 'SuperAdmin'])
     def get(self, neighborhood_id):
         residents = Resident.query.filter_by(neighborhood_id=neighborhood_id).all()
-        response = make_response([resident.to_dict() for resident in residents])
-        response.mimetype = 'application/json'
-        return response
+        return make_response([resident.to_dict() for resident in residents], 200)
 
+class ResidentPostResource(Resource):
     @role_required(['Admin'])
     def post(self, neighborhood_id):
         data = request.json
@@ -167,17 +156,15 @@ class ResidentResource(Resource):
             name=data['name'],
             email=data['email'],
             password=generate_password_hash(data['password']),
-            neighborhood_id=neighborhood_id,
             role='Resident',
-            date_joined=datetime.utcnow()
+            neighborhood_id=neighborhood_id,
+            house_number=data.get('house_number', '')
         )
         db.session.add(new_resident)
         db.session.commit()
-        response = make_response(new_resident.to_dict())
-        response.status_code = 201
-        response.mimetype = 'application/json'
-        return response
+        return make_response(new_resident.to_dict(), 201)
 
+class ResidentPutResource(Resource):
     @role_required(['Admin'])
     def put(self, resident_id):
         resident = Resident.query.get_or_404(resident_id)
@@ -186,36 +173,37 @@ class ResidentResource(Resource):
         resident.email = data.get('email', resident.email)
         if 'password' in data:
             resident.password = generate_password_hash(data['password'])
+        resident.house_number = data.get('house_number', resident.house_number)
         db.session.commit()
-        response = make_response(resident.to_dict())
-        response.mimetype = 'application/json'
-        return response
+        return make_response(resident.to_dict(), 200)
 
+class ResidentDeleteResource(Resource):
     @role_required(['Admin'])
     def delete(self, resident_id):
         resident = Resident.query.get_or_404(resident_id)
         db.session.delete(resident)
         db.session.commit()
-        response = make_response({"message": "Resident deleted"})
-        response.mimetype = 'application/json'
-        return response
+        return make_response({"message": "Resident deleted"}, 200)
 
-class NewsResource(Resource):
-    @role_required(['Admin', 'SuperAdmin'])
+# News Resource
+class NewsGetResource(Resource):
+    @role_required(['Admin', 'SuperAdmin', 'Resident'])
     def get(self, neighborhood_id=None, news_id=None):
+        user_id = get_jwt_identity()['id']
         if news_id:
             news_item = News.query.get_or_404(news_id)
-            response = make_response(news_item.to_dict())
-        elif neighborhood_id:
+            if get_jwt_identity()['role'] == 'Resident' and news_item.resident_id != user_id:
+                return make_response({"error": "Unauthorized"}, 403)
+            return make_response(news_item.to_dict(), 200)
+        if neighborhood_id:
             news_items = News.query.filter_by(neighborhood_id=neighborhood_id).all()
-            response = make_response([news_item.to_dict() for news_item in news_items])
-        else:
-            response = make_response({"error": "Neighborhood ID required"})
-            response.status_code = 400
-        response.mimetype = 'application/json'
-        return response
+            if get_jwt_identity()['role'] == 'Resident':
+                news_items = [news for news in news_items if news.resident_id == user_id]
+            return make_response([news_item.to_dict() for news_item in news_items], 200)
+        return make_response({"error": "Neighborhood ID required"}, 400)
 
-    @role_required(['Admin'])
+class NewsPostResource(Resource):
+    @role_required(['Admin', 'Resident'])
     def post(self, neighborhood_id):
         data = request.json
         image = request.files.get('image')
@@ -233,14 +221,15 @@ class NewsResource(Resource):
         )
         db.session.add(new_news)
         db.session.commit()
-        response = make_response(new_news.to_dict())
-        response.status_code = 201
-        response.mimetype = 'application/json'
-        return response
+        return make_response(new_news.to_dict(), 201)
 
-    @role_required(['Admin'])
+class NewsPutResource(Resource):
+    @role_required(['Admin', 'Resident'])
     def put(self, news_id):
+        user_id = get_jwt_identity()['id']
         news_item = News.query.get_or_404(news_id)
+        if get_jwt_identity()['role'] == 'Resident' and news_item.resident_id != user_id:
+            return make_response({"error": "Unauthorized"}, 403)
         data = request.json
         image = request.files.get('image')
         if image:
@@ -249,35 +238,39 @@ class NewsResource(Resource):
         news_item.title = data.get('title', news_item.title)
         news_item.description = data.get('description', news_item.description)
         db.session.commit()
-        response = make_response(news_item.to_dict())
-        response.mimetype = 'application/json'
-        return response
+        return make_response(news_item.to_dict(), 200)
 
-    @role_required(['Admin'])
+class NewsDeleteResource(Resource):
+    @role_required(['Admin', 'Resident'])
     def delete(self, news_id):
+        user_id = get_jwt_identity()['id']
         news_item = News.query.get_or_404(news_id)
+        if get_jwt_identity()['role'] == 'Resident' and news_item.resident_id != user_id:
+            return make_response({"error": "Unauthorized"}, 403)
+        neighborhood_id = news_item.neighborhood_id
         db.session.delete(news_item)
         db.session.commit()
-        response = make_response({"message": "News deleted"})
-        response.mimetype = 'application/json'
-        return response
+        return make_response({"message": "News deleted"}, 200)
 
-class EventResource(Resource):
-    @role_required(['Admin', 'SuperAdmin'])
+# Event Resource
+class EventGetResource(Resource):
+    @role_required(['Admin', 'SuperAdmin', 'Resident'])
     def get(self, neighborhood_id=None, event_id=None):
+        user_id = get_jwt_identity()['id']
         if event_id:
             event = Event.query.get_or_404(event_id)
-            response = make_response(event.to_dict())
-        elif neighborhood_id:
+            if get_jwt_identity()['role'] == 'Resident' and event.resident_id != user_id:
+                return make_response({"error": "Unauthorized"}, 403)
+            return make_response(event.to_dict(), 200)
+        if neighborhood_id:
             events = Event.query.filter_by(neighborhood_id=neighborhood_id).all()
-            response = make_response([event.to_dict() for event in events])
-        else:
-            response = make_response({"error": "Neighborhood ID required"})
-            response.status_code = 400
-        response.mimetype = 'application/json'
-        return response
+            if get_jwt_identity()['role'] == 'Resident':
+                events = [event for event in events if event.resident_id == user_id]
+            return make_response([event.to_dict() for event in events], 200)
+        return make_response({"error": "Neighborhood ID required"}, 400)
 
-    @role_required(['Admin'])
+class EventPostResource(Resource):
+    @role_required(['Admin', 'Resident'])
     def post(self, neighborhood_id):
         data = request.json
         image = request.files.get('image')
@@ -295,14 +288,15 @@ class EventResource(Resource):
         )
         db.session.add(new_event)
         db.session.commit()
-        response = make_response(new_event.to_dict())
-        response.status_code = 201
-        response.mimetype = 'application/json'
-        return response
+        return make_response(new_event.to_dict(), 201)
 
-    @role_required(['Admin'])
+class EventPutResource(Resource):
+    @role_required(['Admin', 'Resident'])
     def put(self, event_id):
+        user_id = get_jwt_identity()['id']
         event = Event.query.get_or_404(event_id)
+        if get_jwt_identity()['role'] == 'Resident' and event.resident_id != user_id:
+            return make_response({"error": "Unauthorized"}, 403)
         data = request.json
         image = request.files.get('image')
         if image:
@@ -311,81 +305,59 @@ class EventResource(Resource):
         event.title = data.get('title', event.title)
         event.description = data.get('description', event.description)
         db.session.commit()
-        response = make_response(event.to_dict())
-        response.mimetype = 'application/json'
-        return response
+        return make_response(event.to_dict(), 200)
 
-    @role_required(['Admin'])
+class EventDeleteResource(Resource):
+    @role_required(['Admin', 'Resident'])
     def delete(self, event_id):
+        user_id = get_jwt_identity()['id']
         event = Event.query.get_or_404(event_id)
+        if get_jwt_identity()['role'] == 'Resident' and event.resident_id != user_id:
+            return make_response({"error": "Unauthorized"}, 403)
+        neighborhood_id = event.neighborhood_id
         db.session.delete(event)
         db.session.commit()
-        response = make_response({"message": "Event deleted"})
-        response.mimetype = 'application/json'
-        return response
+        return make_response({"message": "Event deleted"}, 200)
 
-class ContactResource(Resource):
-    @role_required(['Admin', 'SuperAdmin'])
+# Notification Resource
+class NotificationGetResource(Resource):
+    @role_required(['Resident', 'Admin'])
     def get(self):
-        contacts = Contact.query.all()
-        response = make_response([contact.to_dict() for contact in contacts])
-        response.mimetype = 'application/json'
-        return response
+        resident_id = get_jwt_identity()['id']
+        notifications = Notifications.query.filter_by(resident_id=resident_id).all()
+        return make_response([notification.to_dict() for notification in notifications], 200)
 
-class AdminResource(Resource):
-    @role_required(['SuperAdmin'])
-    def get(self):
-        admins = Admin.query.all()
-        response = make_response([admin.to_dict() for admin in admins])
-        response.mimetype = 'application/json'
-        return response
-
-    @role_required(['SuperAdmin'])
-    def post(self):
-        data = request.json
-        new_admin = Admin(
-            name=data['name'],
-            email=data['email'],
-            password=generate_password_hash(data['password']),
-            role='Admin'
-        )
-        db.session.add(new_admin)
+class NotificationDeleteResource(Resource):
+    @role_required(['Resident', 'Admin', 'SuperAdmin'])  # Adjusted to allow all roles
+    def delete(self, notification_id):
+        notification = Notifications.query.get_or_404(notification_id)
+        db.session.delete(notification)
         db.session.commit()
-        response = make_response(new_admin.to_dict())
-        response.status_code = 201
-        response.mimetype = 'application/json'
-        return response
+        return make_response({"message": "Notification deleted"}, 200)
 
-    @role_required(['SuperAdmin'])
-    def put(self, admin_id):
-        admin = Admin.query.get_or_404(admin_id)
-        data = request.json
-        admin.name = data.get('name', admin.name)
-        admin.email = data.get('email', admin.email)
-        if 'password' in data:
-            admin.password = generate_password_hash(data['password'])
-        db.session.commit()
-        response = make_response(admin.to_dict())
-        response.mimetype = 'application/json'
-        return response
+# Register the resources with the API
+api.add_resource(NeighborhoodGetResource, '/neighborhoods', '/neighborhoods/<int:neighborhood_id>')
+api.add_resource(NeighborhoodPostResource, '/neighborhoods')
+api.add_resource(NeighborhoodPutResource, '/neighborhoods/<int:neighborhood_id>')
+api.add_resource(NeighborhoodDeleteResource, '/neighborhoods/<int:neighborhood_id>')
 
-    @role_required(['SuperAdmin'])
-    def delete(self, admin_id):
-        admin = Admin.query.get_or_404(admin_id)
-        db.session.delete(admin)
-        db.session.commit()
-        response = make_response({"message": "Admin deleted"})
-        response.mimetype = 'application/json'
-        return response
+api.add_resource(ResidentGetResource, '/neighborhoods/<int:neighborhood_id>/residents')
+api.add_resource(ResidentPostResource, '/neighborhoods/<int:neighborhood_id>/residents')
+api.add_resource(ResidentPutResource, '/residents/<int:resident_id>')
+api.add_resource(ResidentDeleteResource, '/residents/<int:resident_id>')
 
-# Add resources to the API
-api.add_resource(NeighborhoodResource, '/neighborhoods', '/neighborhoods/<int:neighborhood_id>')
-api.add_resource(ResidentResource, '/neighborhoods/<int:neighborhood_id>/residents', '/residents/<int:resident_id>')
-api.add_resource(NewsResource, '/neighborhoods/<int:neighborhood_id>/news', '/news/<int:news_id>')
-api.add_resource(EventResource, '/neighborhoods/<int:neighborhood_id>/events', '/events/<int:event_id>')
-api.add_resource(ContactResource, '/contacts')
-api.add_resource(AdminResource, '/admins', '/admins/<int:admin_id>')
-api.add_resource(LoginResource, '/login')
+api.add_resource(NewsGetResource, '/neighborhoods/<int:neighborhood_id>/news', '/news/<int:news_id>')
+api.add_resource(NewsPostResource, '/neighborhoods/<int:neighborhood_id>/news')
+api.add_resource(NewsPutResource, '/news/<int:news_id>')
+api.add_resource(NewsDeleteResource, '/news/<int:news_id>')
+
+api.add_resource(EventGetResource, '/neighborhoods/<int:neighborhood_id>/events', '/events/<int:event_id>')
+api.add_resource(EventPostResource, '/neighborhoods/<int:neighborhood_id>/events')
+api.add_resource(EventPutResource, '/events/<int:event_id>')
+api.add_resource(EventDeleteResource, '/events/<int:event_id>')
+
+api.add_resource(NotificationGetResource, '/notifications')
+api.add_resource(NotificationDeleteResource, '/notifications/<int:notification_id>')  # Added for deletion
 
 # Run the app
 if __name__ == '__main__':

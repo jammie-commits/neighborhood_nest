@@ -1,4 +1,4 @@
-from models import db, Resident, Neighborhood, News, Event, Contact
+from models import db, Resident, Neighborhood, News, Event, Contact, Notifications
 from werkzeug.security import generate_password_hash
 from datetime import datetime, timezone
 
@@ -150,23 +150,23 @@ def seed_data():
     db.session.add_all([event1, event2])
     db.session.commit()
 
-    # Optional: Add some contact messages
-    contact1 = Contact(
-        name="John Doe",
-        subject="Inquiry about the cleanup event",
-        message="Looking forward to the neighborhood cleanup event!"
+    # Create Notifications
+    notification1 = Notifications(
+        description="Reminder: Neighborhood cleanup day is tomorrow!",
+        neighborhood_id=neighborhood1.id,
+        resident_id=resident1.id
     )
 
-    contact2 = Contact(
-        name="Jane Smith",
-        subject="Feedback on the new park",
-        message="Excited about the new park opening!"
+    notification2 = Notifications(
+        description="New park opening next week! Don't miss it.",
+        neighborhood_id=neighborhood2.id,
+        resident_id=resident2.id
     )
 
-    db.session.add_all([contact1, contact2])
+    db.session.add_all([notification1, notification2])
     db.session.commit()
 
-    print("Database seeded successfully with residents, news, events, and contacts!")
+    print("Database seeded successfully with residents, news, events, contacts, and notifications!")
 
 if __name__ == "__main__":
     from app import app  # Import the app to use its context

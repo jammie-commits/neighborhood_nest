@@ -157,3 +157,28 @@ class Contact(db.Model):
             'message': self.message,
             'date_submitted': self.date_submitted.isoformat()
         }
+    
+class Notifications(db.Model):
+    __tablename__ = 'notifications'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    description = db.Column(db.Text, nullable=False)
+    date_created = db.Column(db.DateTime, default=datetime.utcnow)
+    neighborhood_id = db.Column(db.Integer, db.ForeignKey('neighborhoods.id'), nullable=False)
+    resident_id = db.Column(db.Integer, db.ForeignKey('residents.id'), nullable=False)
+
+    # Relationship between notifications and residents
+    resident = db.relationship('Resident', backref='notifications')
+    #relationship between notifications and neighborhoods
+    neighborhood = db.relationship('Neighborhood', backref='notifications')
+    
+    
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'description': self.description,
+            'date_created': self.date_created.isoformat(),  # Ensures ISO format for date
+            'neighborhood_id': self.neighborhood_id,
+            'resident_id': self.resident_id
+        }
