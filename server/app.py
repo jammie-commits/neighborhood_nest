@@ -145,8 +145,8 @@ class NeighborhoodDeleteResource(Resource):
 # Resident Resource
 class ResidentGetResource(Resource):
     @role_required(['Admin', 'SuperAdmin'])
-    def get(self, neighborhood_id):
-        residents = Resident.query.filter_by(neighborhood_id=neighborhood_id).all()
+    def get(self, admin_id):
+        residents = Resident.query.filter_by(id=admin_id).all()
         return make_response([resident.to_dict() for resident in residents], 200)
 
 class ResidentPostResource(Resource):
@@ -396,7 +396,7 @@ api.add_resource(NeighborhoodPostResource, '/neighborhoods')
 api.add_resource(NeighborhoodPutResource, '/neighborhoods/<int:neighborhood_id>')
 api.add_resource(NeighborhoodDeleteResource, '/neighborhoods/<int:neighborhood_id>')
 
-api.add_resource(ResidentGetResource, '/neighborhoods/<int:neighborhood_id>/residents')
+api.add_resource(ResidentGetResource, '/neighborhoods/<int:admin_id>/residents')
 api.add_resource(ResidentPostResource, '/neighborhoods/<int:neighborhood_id>/residentspost')
 api.add_resource(ResidentPutResource, '/residents/<int:resident_id>')
 api.add_resource(ResidentDeleteResource, '/residents/<int:resident_id>')
