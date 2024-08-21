@@ -387,6 +387,8 @@ class ContactDeleteResource(Resource):
 
 
 # Register the resources with the API
+#add api for login
+api.add_resource(LoginResource, '/login')
 api.add_resource(NeighborhoodGetResource, '/neighborhoods', '/neighborhoods/<int:neighborhood_id>')
 api.add_resource(NeighborhoodPostResource, '/neighborhoods')
 api.add_resource(NeighborhoodPutResource, '/neighborhoods/<int:neighborhood_id>')
