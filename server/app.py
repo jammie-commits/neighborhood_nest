@@ -143,7 +143,7 @@ class NeighborhoodDeleteResource(Resource):
         return make_response({"message": "Neighborhood deleted"}, 200)
 
 class ResidentGetResource(Resource):
-    @role_required(['Admin', 'SuperAdmin'])
+    @role_required(['Admin', 'SuperAdmin', 'Resident'])
     def get(self, neighborhood_id):
         # Ensure the neighborhood exists
         Neighborhood.query.get_or_404(neighborhood_id)
