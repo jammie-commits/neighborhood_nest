@@ -91,7 +91,6 @@ class LoginResource(Resource):
             return make_response({"error": "Invalid credentials"}, 401)
 
         access_token = create_access_token(identity={
-            'email': user.email,
             'neighborhood_id': user.neighborhood_id,
             'id': user.id,
             'role': user.role
@@ -101,7 +100,7 @@ class LoginResource(Resource):
             'role': user.role,
             'id': user.id,
             'neighborhood_id': user.neighborhood_id,
-            'email': user.email
+            
         }, 200)
 
 # Neighborhood Resource
