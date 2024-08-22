@@ -55,7 +55,7 @@ PERMISSIONS = {
     },
     'SuperAdmin': {
         'neighborhoods': ['GET', 'POST', 'PUT', 'DELETE'],
-        'admins': ['GET', 'POST', 'PUT', 'DELETE'],
+        'residents': ['GET', 'POST', 'PUT', 'DELETE'],
         'contacts': ['GET', 'POST', 'PUT', 'DELETE'],
         'notifications': ['GET', 'DELETE'],
     },
@@ -160,7 +160,7 @@ class ResidentGetResource(Resource):
 
 
 class ResidentPostResource(Resource):
-    @role_required(['Admin'])
+    @role_required(['Admin', 'SuperAdmin'])
     def post(self, neighborhood_id):
         data = request.json
         p = generate_password_hash(str(data['password']))
@@ -178,7 +178,7 @@ class ResidentPostResource(Resource):
         return make_response(new_resident.to_dict(), 201)
 
 class ResidentPutResource(Resource):
-    @role_required(['Admin'])
+    @role_required(['Admin', 'SuperAdmin'])
     def put(self, resident_id):
         resident = Resident.query.get_or_404(resident_id)
         data = request.json
@@ -191,7 +191,7 @@ class ResidentPutResource(Resource):
         return make_response(resident.to_dict(), 200)
 
 class ResidentDeleteResource(Resource):
-    @role_required(['Admin'])
+    @role_required(['Admin','SuperAdmin'])
     def delete(self, resident_id):
         resident = Resident.query.get_or_404(resident_id)
         db.session.delete(resident)
