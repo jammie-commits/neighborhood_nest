@@ -142,13 +142,19 @@ class NeighborhoodDeleteResource(Resource):
         db.session.commit()
         return make_response({"message": "Neighborhood deleted"}, 200)
 
-# Resident Resource
 class ResidentGetResource(Resource):
     @role_required(['Admin', 'SuperAdmin'])
-    def get(self, admin_id):
-        residents = Neighborhood.query.get_or_404(residents_id=admin_id)
-        # residents = Resident.query.filter_by(id=admin_id).all()
+    def get(self, neighborhood_id):
+        # Ensure the neighborhood exists
+        Neighborhood.query.get_or_404(neighborhood_id)
+        
+        # Fetch the residents associated with the neighborhood
+        residents = Resident.query.filter_by(neighborhood_id=neighborhood_id).all()
+        
+        # Convert residents to a list of dictionaries
         return make_response([resident.to_dict() for resident in residents], 200)
+
+
 
 class ResidentPostResource(Resource):
     @role_required(['Admin'])
@@ -397,7 +403,7 @@ api.add_resource(NeighborhoodPostResource, '/neighborhoods')
 api.add_resource(NeighborhoodPutResource, '/neighborhoods/<int:neighborhood_id>')
 api.add_resource(NeighborhoodDeleteResource, '/neighborhoods/<int:neighborhood_id>')
 
-api.add_resource(ResidentGetResource, '/neighborhoods/<int:admin_id>/residents')
+api.add_resource(ResidentGetResource, '/neighborhoods/<int:neighborhood_id>/residents')
 api.add_resource(ResidentPostResource, '/neighborhoods/<int:neighborhood_id>/residentspost')
 api.add_resource(ResidentPutResource, '/residents/<int:resident_id>')
 api.add_resource(ResidentDeleteResource, '/residents/<int:resident_id>')
