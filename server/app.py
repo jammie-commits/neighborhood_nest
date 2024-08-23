@@ -283,25 +283,47 @@ class EventGetResource(Resource):
         return make_response({"error": "Neighborhood ID required"}, 400)
 
 class EventPostResource(Resource):
-    @role_required(['Admin', 'Resident'])
+    @jwt_required()
     def post(self, neighborhood_id):
-        data = request.json
+        # Extract data from the request
+        data = request.form
         image = request.files.get('image')
         image_url = None
+
+        # Handle image upload
         if image:
-            upload_result = cloudinary.uploader.upload(image)
-            image_url = upload_result['url']
-        new_event = Event(
-            title=data['title'],
-            description=data['description'],
-            neighborhood_id=neighborhood_id,
-            resident_id=get_jwt_identity()['id'],
-            date_created=datetime.utcnow(),
-            image_url=image_url
-        )
-        db.session.add(new_event)
-        db.session.commit()
-        return make_response(new_event.to_dict(), 201)
+            try:
+                upload_result = cloudinary.uploader.upload(image)
+                image_url = upload_result['url']
+            except Exception as e:
+                return make_response({'error': f'Image upload failed: {str(e)}'}, 500)
+
+        # Validate required fields
+        if not all(k in data for k in ('title', 'description', 'resident_id')):
+            return make_response({'error': 'Missing required fields'}, 400)
+
+        resident_id = data.get('resident_id')
+        if not resident_id:
+            return make_response({'error': 'Resident ID is required'}, 400)
+
+        # Create the new event
+        try:
+            new_event = Event(
+                name=data['title'],
+                description=data['description'],
+                neighborhood_id=neighborhood_id,
+                resident_id=resident_id,  # Ensure resident_id is provided
+                date=datetime.utcnow(),
+                image_url=image_url
+            )
+
+            db.session.add(new_event)
+            db.session.commit()
+
+            return make_response(new_event.to_dict(), 201)
+        except Exception as e:
+            return make_response({'error': f'Event creation failed: {str(e)}'}, 500)
+
 
 class EventPutResource(Resource):
     @role_required(['Admin', 'Resident'])

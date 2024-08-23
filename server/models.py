@@ -123,9 +123,11 @@ class Event(db.Model, SerializerMixin):
     date = db.Column(db.DateTime, nullable=False)
     image_url = db.Column(db.String(255))  # URL for event image
     neighborhood_id = db.Column(db.Integer, db.ForeignKey('neighborhoods.id'), nullable=False)  # ForeignKey to Neighborhood model
-    
+    resident_id = db.Column(db.Integer, db.ForeignKey('residents.id'), nullable=True)  # Add this line if it's missing
+
     # Relationships
     neighborhood = db.relationship('Neighborhood', backref=db.backref('events', lazy=True))
+    resident = db.relationship('Resident', backref=db.backref('events', lazy=True))
 
     def __repr__(self):
         return f"<Event {self.name} (ID: {self.id}, Date: {self.date})>"
@@ -138,7 +140,8 @@ class Event(db.Model, SerializerMixin):
             'date': self.date,
             'image_url': self.image_url,
             'neighborhood_id': self.neighborhood_id,
-            'neighborhood_name': self.neighborhood.name  # Assuming you want the neighborhood's name in the dict
+            'neighborhood_name': self.neighborhood.name,  # Assuming you want the neighborhood's name in the dict
+            'resident_id': self.resident_id
         }
 
 

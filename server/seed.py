@@ -1,4 +1,4 @@
-from models import db, Resident, Neighborhood, News, Event, Contact, Notifications
+from models import db, Resident, Neighborhood, News, Event, Notifications
 from werkzeug.security import generate_password_hash
 from datetime import datetime, timezone
 
@@ -136,7 +136,8 @@ def seed_data():
         description="A fun summer festival with music, food, and games.",
         date=datetime.now(timezone.utc),
         image_url="https://example.com/festival.jpg",
-        neighborhood_id=neighborhood1.id  # Assigning neighborhood_id to the event
+        neighborhood_id=neighborhood1.id,  # Assigning neighborhood_id to the event
+        resident_id=resident1.id  # Providing resident_id if required by the model
     )
 
     event2 = Event(
@@ -144,7 +145,8 @@ def seed_data():
         description="Celebrate the winter season with a grand gala event.",
         date=datetime.now(timezone.utc),
         image_url="https://example.com/gala.jpg",
-        neighborhood_id=neighborhood2.id  # Assigning neighborhood_id to the event
+        neighborhood_id=neighborhood2.id,  # Assigning neighborhood_id to the event
+        resident_id=resident2.id  # Providing resident_id if required by the model
     )
 
     db.session.add_all([event1, event2])
@@ -166,7 +168,7 @@ def seed_data():
     db.session.add_all([notification1, notification2])
     db.session.commit()
 
-    print("Database seeded successfully with residents, news, events, contacts, and notifications!")
+    print("Database seeded successfully with residents, news, events, and notifications!")
 
 if __name__ == "__main__":
     from app import app  # Import the app to use its context
