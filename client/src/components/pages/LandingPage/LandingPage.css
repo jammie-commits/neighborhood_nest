@@ -1,0 +1,35 @@
+/* src/LandingPage.css */
+
+.landing-page {
+    text-align: center;
+    padding: 50px;
+    background-color: #f4f4f4;
+}
+
+.landing-header {
+    margin-bottom: 20px;
+}
+
+.landing-header h1 {
+    font-size: 3em;
+    margin: 0;
+}
+
+.landing-header p {
+    font-size: 1.5em;
+    color: #666;
+}
+
+.landing-header nav {
+    margin-top: 20px;
+}
+
+.landing-header nav a {
+    margin: 0 15px;
+    text-decoration: none;
+    color: #007bff;
+}
+
+.landing-header nav a:hover {
+    text-decoration: underline;
+}

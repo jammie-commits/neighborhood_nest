@@ -10,7 +10,7 @@ from flask_cors import CORS
 import cloudinary.uploader
 import cloudinary
 from functools import wraps
-
+import logging
 # Initialize the app and extensions
 app = Flask(__name__)
 CORS(app, resources={r"/*": {"origins": "*"}})
@@ -25,6 +25,8 @@ app.config['JWT_ACCESS_TOKEN_EXPIRES'] = timedelta(minutes=1440)
 db.init_app(app)
 jwt = JWTManager(app)
 migrate = Migrate(app, db)
+
+logging.basicConfig(level=logging.DEBUG)
 
 cloudinary.config(
     cloud_name='dypwsrolf',
@@ -105,6 +107,23 @@ class LoginResource(Resource):
 
 # Neighborhood Resource
 class NeighborhoodGetResource(Resource):
+    @role_required(['SuperAdmin', 'Admin'])
+    def get(self, neighborhood_id=None):
+        user_id = get_jwt_identity()['id']
+        user_role = get_jwt_identity()['role']
+        
+        if neighborhood_id:
+            neighborhood = Neighborhood.query.get_or_404(neighborhood_id)
+            if user_role == 'Admin' and neighborhood.admin_id != user_id:
+                return make_response({"error": "Unauthorized"}, 403)
+            return make_response(neighborhood.to_dict(), 200)
+        
+        if user_role == 'Admin':
+            neighborhoods = Neighborhood.query.filter_by(admin_id=user_id).all()
+        else:  # For SuperAdmin or other roles
+            neighborhoods = Neighborhood.query.all()
+        
+        return make_response([neighborhood.to_dict() for neighborhood in neighborhoods], 200)
     @role_required(['SuperAdmin', 'Admin'])
     def get(self, neighborhood_id=None):
         if neighborhood_id:
@@ -191,29 +210,48 @@ class ResidentPutResource(Resource):
         return make_response(resident.to_dict(), 200)
 
 class ResidentDeleteResource(Resource):
-    @role_required(['Admin','SuperAdmin'])
+    @role_required(['Admin', 'SuperAdmin'])
     def delete(self, resident_id):
-        resident = Resident.query.get_or_404(resident_id)
-        db.session.delete(resident)
-        db.session.commit()
-        return make_response({"message": "Resident deleted"}, 200)
-
+        try:
+            app.logger.debug(f"Attempting to delete resident with ID: {resident_id}")
+            resident = Resident.query.get_or_404(resident_id)
+            
+            # Check if resident exists
+            if not resident:
+                return make_response({"message": "Resident not found"}, 404)
+            
+            db.session.delete(resident)
+            db.session.commit()
+            app.logger.debug("Resident deleted successfully")
+            return make_response({"message": "Resident deleted"}, 200)
+        except Exception as e:
+            # Log the error and return a more informative message
+            app.logger.error(f"Error deleting resident with ID {resident_id}: {str(e)}")
+            return make_response({"message": "Internal Server Error"}, 500)
 # News Resource
+
 class NewsGetResource(Resource):
     @role_required(['Admin', 'SuperAdmin', 'Resident'])
     def get(self, neighborhood_id=None, news_id=None):
         user_id = get_jwt_identity()['id']
+        user_role = get_jwt_identity()['role']
+
+        # Fetch a single news item by ID
         if news_id:
             news_item = News.query.get_or_404(news_id)
-            if get_jwt_identity()['role'] == 'Resident' and news_item.resident_id != user_id:
-                return make_response({"error": "Unauthorized"}, 403)
+            if user_role == 'Resident' and news_item.resident_id != user_id:
+                return make_response({"error": "Unauthorized access to this news item"}, 403)
             return make_response(news_item.to_dict(), 200)
+        
+        # Fetch news items by neighborhood ID
         if neighborhood_id:
             news_items = News.query.filter_by(neighborhood_id=neighborhood_id).all()
-            if get_jwt_identity()['role'] == 'Resident':
+            if user_role == 'Resident':
+                # Filter news items for residents
                 news_items = [news for news in news_items if news.resident_id == user_id]
             return make_response([news_item.to_dict() for news_item in news_items], 200)
-        return make_response({"error": "Neighborhood ID required"}, 400)
+        
+        return make_response({"error": "Neighborhood ID is required"}, 400)
 
 class NewsPostResource(Resource):
     @role_required(['Admin', 'Resident'])
