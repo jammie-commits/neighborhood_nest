@@ -296,33 +296,37 @@ class EventPostResource(Resource):
                 upload_result = cloudinary.uploader.upload(image)
                 image_url = upload_result['url']
             except Exception as e:
-                return make_response({'error': f'Image upload failed: {str(e)}'}, 500)
+                return {'error': f'Image upload failed: {str(e)}'}, 500
 
         # Validate required fields
-        if not all(k in data for k in ('title', 'description', 'resident_id')):
-            return make_response({'error': 'Missing required fields'}, 400)
+        if 'title' not in data or 'description' not in data or 'date' not in data:
+            return {'error': 'Missing required fields'}, 400
 
-        resident_id = data.get('resident_id')
-        if not resident_id:
-            return make_response({'error': 'Resident ID is required'}, 400)
+        # Extract fields from the data dictionary
+        title = data.get('title')
+        description = data.get('description')
+        date = data.get('date')
+
+        if not title or not description or not date:
+            return {'error': 'Title, description, and date are required'}, 400
 
         # Create the new event
         try:
             new_event = Event(
-                name=data['title'],
-                description=data['description'],
+                name=title,
+                description=description,
                 neighborhood_id=neighborhood_id,
-                resident_id=resident_id,  # Ensure resident_id is provided
-                date=datetime.utcnow(),
+                date=date,
                 image_url=image_url
             )
 
             db.session.add(new_event)
             db.session.commit()
 
-            return make_response(new_event.to_dict(), 201)
+            return new_event.to_dict(), 201
         except Exception as e:
-            return make_response({'error': f'Event creation failed: {str(e)}'}, 500)
+            return {'error': f'Event creation failed: {str(e)}'}, 500
+
 
 
 class EventPutResource(Resource):

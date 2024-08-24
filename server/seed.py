@@ -7,15 +7,16 @@ def seed_data():
     default_neighborhood = Neighborhood(name="Default Neighborhood", location="N/A", image_url="https://example.com/default.jpg")
     neighborhood1 = Neighborhood(name="Greenfield", location="123 Green St", image_url="https://example.com/greenfield.jpg")
     neighborhood2 = Neighborhood(name="Sunnyvale", location="456 Sun St", image_url="https://example.com/sunnyvale.jpg")
+    neighborhood14 = Neighborhood(name="Yvale", location="457 Sun St", image_url="https://example.com/sunnyvale.jpg")
 
-    db.session.add_all([default_neighborhood, neighborhood1, neighborhood2])
+    db.session.add_all([default_neighborhood, neighborhood1, neighborhood2, neighborhood14])
     db.session.commit()
 
     # Create or Update SuperAdmin
     super_admin = Resident.query.filter_by(email="princesssuperadmin@gmail.com").first()
     if super_admin is None:
         super_admin = Resident(
-            name="princess",
+            name="Princess",
             email="princesssuperadmin@gmail.com",
             password=generate_password_hash("superpassword"),
             role="SuperAdmin",
@@ -23,7 +24,7 @@ def seed_data():
         )
         db.session.add(super_admin)
     else:
-        super_admin.name = "princess"
+        super_admin.name = "Princess"
         super_admin.password = generate_password_hash("superpassword")
         super_admin.role = "SuperAdmin"
         super_admin.neighborhood_id = default_neighborhood.id
@@ -149,7 +150,16 @@ def seed_data():
         resident_id=resident2.id  # Providing resident_id if required by the model
     )
 
-    db.session.add_all([event1, event2])
+    event3 = Event(
+        name="Ruracio",
+        description="Celebrate the winter season with a grand gala event.",
+        date=datetime.now(timezone.utc),
+        image_url="https://example.com/gala.jpg",
+        neighborhood_id=neighborhood14.id,  # Assigning neighborhood_id to the event
+        resident_id=admin1.id  # Providing resident_id if required by the model
+    )
+    
+    db.session.add_all([event1, event2, event3])
     db.session.commit()
 
     # Create Notifications
