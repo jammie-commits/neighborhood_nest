@@ -283,55 +283,31 @@ class EventGetResource(Resource):
         return make_response({"error": "Neighborhood ID required"}, 400)
 
 class EventPostResource(Resource):
-    @jwt_required()
+    @role_required(['Admin', 'Resident'])
     def post(self, neighborhood_id):
-        # Extract data from the request
-        data = request.form
+        data = request.json
         image = request.files.get('image')
         image_url = None
-
-        # Handle image upload
         if image:
-            try:
-                upload_result = cloudinary.uploader.upload(image)
-                image_url = upload_result['url']
-            except Exception as e:
-                return make_response({'error': f'Image upload failed: {str(e)}'}, 500)
-
-        # Validate required fields
-        if not all(k in data for k in ('title', 'description', 'resident_id')):
-            return make_response({'error': 'Missing required fields'}, 400)
-
-        resident_id = data.get('resident_id')
-        if not resident_id:
-            return make_response({'error': 'Resident ID is required'}, 400)
-
-        # Create the new event
-        try:
-            new_event = Event(
-                name=data['title'],
-                description=data['description'],
-                neighborhood_id=neighborhood_id,
-                resident_id=resident_id,  # Ensure resident_id is provided
-                date=datetime.utcnow(),
-                image_url=image_url
-            )
-
-            db.session.add(new_event)
-            db.session.commit()
-
-            return make_response(new_event.to_dict(), 201)
-        except Exception as e:
-            return make_response({'error': f'Event creation failed: {str(e)}'}, 500)
-
+            upload_result = cloudinary.uploader.upload(image)
+            image_url = upload_result['url']
+        new_event = Event(
+            name=data['name'],
+            description=data['description'],
+            neighborhood_id=neighborhood_id,
+            # Omit resident_id if not needed
+            date=datetime.utcnow(),
+            image_url=image_url
+        )
+        db.session.add(new_event)
+        db.session.commit()
+        return make_response(new_event.to_dict(), 201)
 
 class EventPutResource(Resource):
     @role_required(['Admin', 'Resident'])
     def put(self, event_id):
-        user_id = get_jwt_identity()['id']
         event = Event.query.get_or_404(event_id)
-        if get_jwt_identity()['role'] == 'Resident' and event.resident_id != user_id:
-            return make_response({"error": "Unauthorized"}, 403)
+        # Removed resident_id check
         data = request.json
         image = request.files.get('image')
         if image:
@@ -345,15 +321,12 @@ class EventPutResource(Resource):
 class EventDeleteResource(Resource):
     @role_required(['Admin', 'Resident'])
     def delete(self, event_id):
-        user_id = get_jwt_identity()['id']
         event = Event.query.get_or_404(event_id)
-        if get_jwt_identity()['role'] == 'Resident' and event.resident_id != user_id:
-            return make_response({"error": "Unauthorized"}, 403)
+        # Removed resident_id check
         neighborhood_id = event.neighborhood_id
         db.session.delete(event)
         db.session.commit()
         return make_response({"message": "Event deleted"}, 200)
-
 # Notification Resource
 class NotificationGetResource(Resource):
     @role_required(['Resident', 'Admin'])
